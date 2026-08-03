@@ -5,6 +5,11 @@ GMI Cloud provider package for [pi](https://github.com/earendil-works/pi-mono).
 Registers provider `gmi` against the OpenAI-compatible GMI Inference API and
 loads the live model catalog from `GET /v1/models`.
 
+Transport is chosen per model:
+
+- OpenAI first-party models (`openai/gpt-*`, `openai/o*`) → `openai-responses`
+- All other catalog models → `openai-completions`
+
 ## Install
 
 Install the published npm package with pi (recommended):
@@ -68,7 +73,8 @@ refreshes the remote catalog when network access is allowed.
 | Item | Value |
 |------|--------|
 | Provider id | `gmi` |
-| API | `openai-completions` |
+| Default API | `openai-completions` |
+| OpenAI first-party API | `openai-responses` (`openai/gpt-*`, `openai/o*`; excludes `openai/gpt-oss-*`) |
 | Base URL | `https://api.gmi-serving.com/v1` |
 | Catalog source | `GET /v1/models` |
 | Cost units | Converted from GMI per-token USD to pi per-million-token USD |
@@ -80,6 +86,7 @@ Notes:
 - Catalog fetch runs during extension load so `pi --list-models gmi` works immediately.
 - Transient catalog failures keep the last successful in-memory list instead of crashing pi.
 - Reasoning / image capability flags are inferred from model ids and names. Override later via `models.json` `modelOverrides` if needed.
+- Per-model `api` is stored with the refreshed catalog so picker refresh keeps the same routing.
 
 ## Security
 
