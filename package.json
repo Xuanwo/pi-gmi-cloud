@@ -1,0 +1,43 @@
+{
+  "name": "pi-gmi-cloud",
+  "version": "0.1.0",
+  "description": "GMI Cloud provider for pi with dynamic model discovery",
+  "keywords": [
+    "pi-package",
+    "pi",
+    "pi-extension",
+    "gmi-cloud",
+    "gmi",
+    "llm",
+    "provider",
+    "coding-agent"
+  ],
+  "license": "MIT",
+  "author": "Xuanwo",
+  "type": "module",
+  "homepage": "https://github.com/Xuanwo/pi-gmi-cloud#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Xuanwo/pi-gmi-cloud.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Xuanwo/pi-gmi-cloud/issues"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ]
+  },
+  "files": [
+    "extensions",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  }
+}
