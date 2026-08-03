@@ -88,6 +88,17 @@ Notes:
 - Reasoning / image capability flags are inferred from model ids and names. Override later via `models.json` `modelOverrides` if needed.
 - Per-model `api` is stored with the refreshed catalog so picker refresh keeps the same routing.
 
+## Development
+
+```bash
+npm ci
+npm run check
+```
+
+`npm run check` runs TypeScript typecheck, unit tests for catalog routing, and
+an `npm pack` content guard so helper modules stay published while only
+`extensions/gmi-cloud.ts` is registered as the pi extension entry.
+
 ## Security
 
 Pi packages run with full local permissions. Review this repository before

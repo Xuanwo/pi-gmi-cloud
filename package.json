@@ -30,9 +30,15 @@
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --experimental-strip-types --test 'tests/*.test.ts'",
+    "pack:check": "node scripts/check-package.mjs",
+    "check": "npm run typecheck && npm run test && npm run pack:check"
+  },
   "pi": {
     "extensions": [
-      "./extensions"
+      "./extensions/gmi-cloud.ts"
     ]
   },
   "files": [
@@ -43,5 +49,11 @@
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
     "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "0.83.0",
+    "@earendil-works/pi-coding-agent": "0.83.0",
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
   }
 }
