@@ -42,29 +42,50 @@ jobs:
           fi
 
       - name: Inspect package contents
-        run: npm pack --dry-run
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          pack_json="$(npm pack --dry-run --json)"
+          echo "${pack_json}"
+          integrity="$(
+            node -e '
+              let input = "";
+              process.stdin.setEncoding("utf8");
+              process.stdin.on("data", (chunk) => { input += chunk; });
+              process.stdin.on("end", () => {
+                const [pack] = JSON.parse(input);
+                if (!pack?.integrity) {
+                  throw new Error("npm pack did not return integrity");
+                }
+                process.stdout.write(pack.integrity);
+              });
+            ' <<< "${pack_json}"
+          )"
+          echo "integrity=${integrity}" >> "${GITHUB_OUTPUT}"
 
       - name: Resolve registry state
         id: registry
         shell: bash
+        env:
+          LOCAL_INTEGRITY: ${{ steps.package.outputs.integrity }}
         run: |
           set -euo pipefail
           package_name="$(node -p "require('./package.json').name")"
           package_version="$(node -p "require('./package.json').version")"
           package_spec="${package_name}@${package_version}"
 
-          if ! npm view "${package_spec}" version >/dev/null 2>&1; then
+          if ! published_integrity="$(npm view "${package_spec}" dist.integrity 2>/dev/null)"; then
             echo "needs_publish=true" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
 
-          published_git_head="$(npm view "${package_spec}" gitHead 2>/dev/null || true)"
-          if [[ -z "${published_git_head}" || "${published_git_head}" != "${GITHUB_SHA}" ]]; then
-            echo "${package_spec} already exists but was not published from ${GITHUB_SHA}"
+          if [[ -z "${published_integrity}" || "${published_integrity}" != "${LOCAL_INTEGRITY}" ]]; then
+            echo "${package_spec} already exists with different package contents"
             exit 1
           fi
 
-          echo "${package_spec} is already published from ${GITHUB_SHA}"
+          echo "${package_spec} is already published with the same package contents"
           echo "needs_publish=false" >> "${GITHUB_OUTPUT}"
 
       - name: Publish package
