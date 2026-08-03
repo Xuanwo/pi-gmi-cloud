@@ -7,20 +7,16 @@ loads the live model catalog from `GET /v1/models`.
 
 ## Install
 
+Install the published npm package with pi (recommended):
+
 ```bash
-pi install https://github.com/Xuanwo/pi-gmi-cloud
+pi install npm:pi-gmi-cloud
 ```
 
-Pinned ref:
+To pin a specific version:
 
 ```bash
-pi install git:github.com/Xuanwo/pi-gmi-cloud@v0.1.0
-```
-
-One-off without installing:
-
-```bash
-pi -e https://github.com/Xuanwo/pi-gmi-cloud
+pi install npm:pi-gmi-cloud@0.1.0
 ```
 
 ## Auth
