@@ -10,6 +10,10 @@
  *   GET https://api.gmi-serving.com/v1/models
  *   Fetched during extension load (so --list-models works),
  *   and again via refreshModels when the model picker refreshes.
+ *
+ * Transport (per model):
+ *   - openai/gpt-* and openai/o* → openai-responses
+ *   - everything else → openai-completions (provider default)
  */
 
 import { readFile } from "node:fs/promises";
@@ -22,9 +26,12 @@ const PROVIDER_ID = "gmi";
 const PROVIDER_NAME = "GMI Cloud";
 const BASE_URL = "https://api.gmi-serving.com/v1";
 
+type ModelApi = "openai-completions" | "openai-responses";
+
 type ProviderModelConfig = {
 	id: string;
 	name: string;
+	api: ModelApi;
 	reasoning: boolean;
 	input: ("text" | "image")[];
 	cost: {
@@ -92,11 +99,44 @@ function looksMultimodal(id: string, name: string): boolean {
 	);
 }
 
+/**
+ * Prefer Responses only for GMI-hosted OpenAI first-party models.
+ * Everything else stays on Chat Completions — the broad compatibility path.
+ *
+ * Matches: openai/gpt-*, openai/o1, openai/o3, openai/o4, ...
+ * Skips: openai/gpt-oss-* and any non-openai/* id.
+ */
+function selectApi(id: string): ModelApi {
+	const lower = id.toLowerCase();
+	if (/^openai\/(?!gpt-oss)(gpt-|o[1-9])/.test(lower)) {
+		return "openai-responses";
+	}
+	return "openai-completions";
+}
+
+function modelCompat(id: string, api: ModelApi): ProviderModelConfig["compat"] {
+	if (api === "openai-responses") {
+		return {
+			// GMI/Codex path is stateless; pi also defaults Responses store:false.
+			supportsStore: false,
+			supportsReasoningEffort: /\/(gpt-5|o[1-9])/.test(id.toLowerCase()),
+		};
+	}
+
+	return {
+		supportsDeveloperRole: false,
+		supportsReasoningEffort: /openai\/gpt-5/i.test(id),
+		supportsStore: false,
+		maxTokensField: "max_tokens",
+	};
+}
+
 function toProviderModel(raw: GmiModel): ProviderModelConfig | undefined {
 	const id = modelId(raw);
 	if (!id) return undefined;
 
 	const name = (typeof raw.name === "string" && raw.name.trim()) || id;
+	const api = selectApi(id);
 	const contextWindow =
 		typeof raw.context_length === "number" && raw.context_length > 0
 			? raw.context_length
@@ -106,6 +146,7 @@ function toProviderModel(raw: GmiModel): ProviderModelConfig | undefined {
 	return {
 		id,
 		name,
+		api,
 		reasoning: looksReasoning(id, name),
 		input: looksMultimodal(id, name) ? ["text", "image"] : ["text"],
 		cost: {
@@ -116,12 +157,7 @@ function toProviderModel(raw: GmiModel): ProviderModelConfig | undefined {
 		},
 		contextWindow,
 		maxTokens: Math.min(Math.max(8192, Math.floor(contextWindow / 4)), 65536),
-		compat: {
-			supportsDeveloperRole: false,
-			supportsReasoningEffort: /openai\/gpt-5/i.test(id),
-			supportsStore: false,
-			maxTokensField: "max_tokens",
-		},
+		compat: modelCompat(id, api),
 	};
 }
 
@@ -179,6 +215,7 @@ function register(pi: ExtensionAPI, models: ProviderModelConfig[]) {
 		baseUrl: BASE_URL,
 		// Prefer env; auth.json "gmi" is also honored by pi runtime for requests.
 		apiKey: "$GMI_API_KEY",
+		// Provider default for models that omit api; OpenAI first-party models set openai-responses.
 		api: "openai-completions",
 		models,
 		async refreshModels(context: RefreshModelsContext): Promise<ProviderModelConfig[]> {
@@ -204,7 +241,7 @@ function register(pi: ExtensionAPI, models: ProviderModelConfig[]) {
 						models: refreshed.map((model) => ({
 							id: model.id,
 							name: model.name,
-							api: "openai-completions" as const,
+							api: model.api,
 							provider: PROVIDER_ID,
 							baseUrl: BASE_URL,
 							reasoning: model.reasoning,
